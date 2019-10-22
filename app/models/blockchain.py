@@ -25,19 +25,27 @@ class Blockchain(object):
             previousBlock = self.chain[-1]
             previousBlockCopy = copy.copy(previousBlock)
             previousBlockCopy.pop("transactions", None)
-
+        mempool = self.hashlist(self.memPool)
         block = {
             'index': len(self.chain) + 1,
             'timestamp': int(time()),
             'transactions': self.memPool,
-            'merkleRoot': '0'*64,
+            'merkleRoot': self.generateMerkleRoot(mempool) if (len(self.memPool) > 0) else '0'*64,
             'nonce': nonce,
             'previousHash': previousHash or self.generateHash(previousBlockCopy),
         }
-
         self.memPool = []
         self.chain.append(block)
         return block
+
+    @staticmethod
+    def hashlist(mempool):
+        hash_list = []
+        for t in mempool:
+            ihu = json.dumps(t, sort_keys=True).encode()
+            hash_list.append(hashlib.sha256(ihu).hexdigest())
+        print(hash_list)
+        return hash_list
 
     def addNewMiners(self, nodes):
         for node in nodes:
@@ -109,27 +117,25 @@ class Blockchain(object):
         return "transaçao realizada"
 
     @staticmethod
-    def generateMerkleRoot(transactions):
+    def generateMerkleRoot(hashList):
         if len(hashList) == 1:
             return hashList[0]
         newHashList = [] 
         for i in range(0, len(hashList)-1, 2):
-            newHashList.append(hash2(hashList[i], hashList[i+1]))
-        if len(hashList) % 2 == 1: # odd, hash last item twice
-            newHashList.append(hash2(hashList[-1], hashList[-1]))
-        return merkle(newHashList)
+            newHashList.append(Blockchain.hash2(hashList[i], hashList[i+1]))
+        if len(hashList) % 2 == 1:
+            newHashList.append(Blockchain.hash2(hashList[-1], hashList[-1]))
+        return Blockchain.generateMerkleRoot(newHashList)
 
+    @staticmethod
     def hash2(a, b):
-        a1 = a.decode('hex')
-        a11 = a1[::-1]
-        b1 = b.decode('hex')[::-1]
+
+        a11 = a[::-1]
+        b1 = b[::-1]
         concat = a11+b1
-        concat2 = hashlib.sha256(concat).digest()
-        print ("hash1:" + concat2.encode('hex'))
-        h = hashlib.sha256(concat2).digest()
-        print ("hash2:" + h[::-1].encode('hex'))
-        print ('')
-        return h[::-1].encode('hex')
+        concat2 = hashlib.sha256(str(concat).encode('utf-8')).hexdigest()
+        h = hashlib.sha256(str(concat2).encode('utf-8')).hexdigest()
+        return h[::-1]
  
 # Teste
 # blockchain = Blockchain()
@@ -147,4 +153,3 @@ class Blockchain(object):
 #     blockchain.mineProofOfWork(blockchain.prevBlock)
 
 # blockchain.printChain()
-
