@@ -2,6 +2,7 @@ import hashlib
 import json
 from time import time
 import copy
+import requests
 from bitcoin.wallet import CBitcoinSecret
 from bitcoin.signmessage import BitcoinMessage, VerifyMessage, SignMessage
 import random
@@ -42,15 +43,13 @@ class Blockchain(object):
     def hashlist(mempool):
         hash_list = []
         for t in mempool:
-            ihu = json.dumps(t, sort_keys=True).encode()
-            hash_list.append(hashlib.sha256(ihu).hexdigest())
-        print(hash_list)
+            transaction_object = json.dumps(t, sort_keys=True).encode()
+            hash_list.append(hashlib.sha256(transaction_object).hexdigest())
         return hash_list
 
     def addNewMiners(self, nodes):
         for node in nodes:
             self.nodes.add(node)
-        print(self.nodes)
         return self.nodes
         
     @staticmethod
@@ -88,7 +87,6 @@ class Blockchain(object):
         return self.memPool
 
     def printMemPool(self):
-        print(self.memPool)
         return json.dumps(self.memPool, indent=2, sort_keys=True)
 
     @staticmethod
@@ -111,7 +109,7 @@ class Blockchain(object):
             "amount": amount,
             "timestamp": int(time())  
         }
-        #ta vindo um b esquisito
+        #strange b
         transaction["signature"] = str(self.sign(privKey, transaction))[2:-1]
         self.memPool.append(transaction)
         return "transaçao realizada"
@@ -136,20 +134,22 @@ class Blockchain(object):
         concat2 = hashlib.sha256(str(concat).encode('utf-8')).hexdigest()
         h = hashlib.sha256(str(concat2).encode('utf-8')).hexdigest()
         return h[::-1]
- 
-# Teste
-# blockchain = Blockchain()
 
-# sender = '19sXoSbfcQD9K66f5hwP5vLwsaRyKLPgXF'
-# recipient = '1MxTkeEP2PmHSMze5tUZ1hAV3YTKu2Gh1N'
+    def isValidChain(self, blockchain):
+        for block in blockchain:
+            block_hash = self.getBlockID(block)
+            if block_hash[:DIFFICULTY] == '0' * DIFFICULTY: 
+                return True
+            else:
+                return False
 
-# Cria 5 blocos, incluindo o Genesis, contendo de 1-4 transações cada, com valores aleatórios, entre os endereços indicados em sender e recipient.
-# for x in range(0, 4): 
-#     for y in range(0, random.randint(1,4)) : 
-#         timestamp = int(time())
-#         amount = random.uniform(0.00000001, 100)
-#         blockchain.createTransaction(sender, recipient, amount, timestamp, 'L1US57sChKZeyXrev9q7tFm2dgA2ktJe2NP3xzXRv6wizom5MN1U')
-#     blockchain.createBlock()
-#     blockchain.mineProofOfWork(blockchain.prevBlock)
-
-# blockchain.printChain()
+    def resolveConflicts(self):
+        for node in self.nodes:
+            response = requests.get(node+'/chain')
+            blockchain = response.json()
+            if len(blockchain) > len(self.chain):
+                if self.isValidChain(blockchain):
+                    self.chain = blockchain
+        
+        return 'conflitos resolvidos'
+                

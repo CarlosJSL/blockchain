@@ -34,8 +34,8 @@ def getChain():
 def registerNode():
     data = request.get_json()
     blockChain.addNewMiners(data)
-    return 'Nodes register route'
+    return 'Mineradores adicionados com sucesso'
   
 @app.route("/nodes/resolve", methods=['GET']) 
 def resolveNodes():
-    return 'Nodes resolve route'
+    return blockChain.resolveConflicts()
